@@ -1,6 +1,6 @@
 Metadata-Version: 1.1
 Name: pybufferbins
-Version: 0.1.4
+Version: 0.1.5
 Summary: Fast routine to seemlessly classify and store incoming data into an infinite number Protocol Buffer files ("bins").
 Home-page: https://github.com/dsoprea/PyBufferBins
 Author: Dustin Oprea
