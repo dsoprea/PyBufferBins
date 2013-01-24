@@ -1,7 +1,7 @@
 Oveview
 =======
 
-Fast routine to seemlessly classify and store incoming data into an infinite number Protocol Buffer files (\"bins\"). Bins are grouped into directories by a specific field. Data can then be retrieved by the grouped-field's value. Virtually any data can be stored for fast retrieval by using a Bins instance as an index for each required configuration of data.
+Fast routine to seemlessly classify and store incoming data into an infinite number Protocol Buffer files ("bins"). Bins are grouped into directories by a specific field. Data can then be retrieved by the grouped-field's value. Virtually any data can be stored for fast retrieval by using a Bins instance as an index for each required configuration of data.
 
 Origins
 =======
