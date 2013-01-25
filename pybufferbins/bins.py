@@ -3,11 +3,21 @@ from struct import pack, unpack
 from glob import glob
 from os import makedirs
 from os.path import basename, getsize, exists
+from shutil import rmtree
 
 from logging import getLogger
 logging = getLogger(__name__)
 
+# Bins are named as record-types, under a directory named for the 
+# grouping field's value (program ID, etc.., while the bins are named 
+# SdProgram, SdProgramGenre, ...): "<key>/<record type>"
 SORT_BYKEY = 'SortByKey'
+
+# Bins are named for the values of the grouping field, and the directory is 
+# named for the record-type: "<record type>/<key>". This is the opposite order 
+# of SortByKey. This is specifically more useful when you're only pushing one 
+# record-type into an index (it will sort a series of records into files based 
+# on the grouping-field's value, under a single directory).
 SORT_BYTYPE = 'SortByType'
 
 
@@ -17,9 +27,12 @@ class Bins(object):
     it was grouped.
     """
 
-    def __init__(self, root_path, sort_type):
+    def __init__(self, root_path, sort_type, remove_existing=False):
         self.__root_path = root_path
         self.__sort_type = sort_type
+
+        if remove_existing and exists(root_path):
+            rmtree(root_path)
 
         self.__handlers = {}
         self.__router = _Router(self.__main_indexer)
