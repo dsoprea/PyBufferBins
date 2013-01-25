@@ -27,16 +27,20 @@ class Bins(object):
 
     def add_handler(self, pb_cls, key_attr):
 
-        type_name = pb_cls.__name__
-        if self.__sort_type == SORT_BYKEY:
-            info = (pb_cls, self.__idx_group_by_key, key_attr)
-        elif self.__sort_type == SORT_BYTYPE:
-            info = (pb_cls, self.__idx_group_by_type, key_attr)
-        else:
-            raise Exception("Type-name [%s] sort-type [%s] is not valid." %
-                            (type_name, self.__sort_type))
+        try:
+            type_name = pb_cls.__name__
+            if self.__sort_type == SORT_BYKEY:
+                info = (pb_cls, self.__idx_group_by_key, key_attr)
+            elif self.__sort_type == SORT_BYTYPE:
+                info = (pb_cls, self.__idx_group_by_type, key_attr)
+            else:
+                raise Exception("Type-name [%s] sort-type [%s] is not valid." %
+                                (type_name, self.__sort_type))
 
-        self.__handlers[type_name] = info
+            self.__handlers[type_name] = info
+        except:
+            logging.exception("Could not register handler.")
+            raise
 
     def __check_path(self, path):
 
@@ -65,8 +69,20 @@ class Bins(object):
         return file_path
 
     def __main_indexer(self, type_name, record):
-        (_, callback, key_attr) = self.__handlers[type_name]
-        key = getattr(record, key_attr)
+
+        try:
+            (_, callback, key_attr) = self.__handlers[type_name]
+        except:
+            logging.exception("Can not index unregistered type [%s]." %
+                              (type_name))
+            raise
+
+        # We were given a key function.
+        if hasattr(key_attr, '__call__'):
+            key = key_attr(record)
+        # We were given an attribute name.
+        else:
+            key = getattr(record, key_attr)
 
         try:
             return callback(type_name, record, key)
@@ -93,8 +109,8 @@ class Bins(object):
         if self.__sort_type == SORT_BYTYPE:
             pb_cls = self.__handlers[token][0]
         elif self.__sort_type != SORT_BYKEY:
-            raise Exception("Sort-type [%s] is not handled for get_bins." %
-                            (self.__sort_type))
+            raise Exception("Sort-type [%s] is not handled for "
+                            "get_grouped_data." % (self.__sort_type))
 
         collected = {}
         for file_path in found:
