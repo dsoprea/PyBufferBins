@@ -175,7 +175,7 @@ class Bins(object):
 class _Router(object):
     """Class responsible for knowing how to send data to bins."""
 
-    max_handles = 100
+    max_handles = 50
 
     def __init__(self, indexer):
         self.__indexer = indexer
@@ -186,6 +186,7 @@ class _Router(object):
     def flush(self):
         with self.__locker:
             for type_name, handle in list(self.__handles.items()):
+                self.__handles[type_name].close()
                 del self.__handles[type_name]
 
     def push(self, record):
@@ -208,7 +209,8 @@ class _Router(object):
 
             for index_filepath in indexes:
                 if index_filepath not in self.__handles:
-                    if len(self.__handles) >= self.max_handles:
+                    if len(self.__handles) >= _Router.max_handles:
+#                        logging.debug("Forcing flush of (%d) handles." % (len(self.__handles)))
                         self.flush()
 
                     handle = file(index_filepath, 'ab')
