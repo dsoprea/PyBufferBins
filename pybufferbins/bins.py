@@ -1,7 +1,7 @@
 from threading import Lock, RLock
 from struct import pack, unpack
 from glob import glob
-from os import makedirs
+from os import makedirs, listdir
 from os.path import basename, getsize, exists
 from shutil import rmtree
 
@@ -27,16 +27,34 @@ class Bins(object):
     it was grouped.
     """
 
-    def __init__(self, root_path, sort_type, remove_existing=False):
-        self.__root_path = root_path
-        self.__sort_type = sort_type
+    def __init__(self, name, root_path, sort_type, context_path=None, 
+                 remove_existing=False):
+        
+        if context_path is None:
+            self.__root_path = root_path
+        else:
+            self.__root_path = ("%s/%s" % (root_path, context_path))
 
         if remove_existing and exists(root_path):
-            rmtree(root_path)
+            rmtree(self.__root_path)
 
+        self.__name = name
+        self.__sort_type = sort_type
         self.__handlers = {}
         self.__router = _Router(self.__main_indexer)
         self.__checked_paths = {}
+
+    def __str__(self):
+        return ("Bins(NAME=[%s] SORT-TYPE=[%s])" % (self.__name, self.__sort_type))
+
+    @staticmethod
+    def foreach_contexts(root_path):
+        for context in listdir(root_path):
+            yield context
+
+    @staticmethod
+    def get_contexts(root_path):
+        return sorted(listdir(root_path))
 
     def add_handler(self, pb_cls, key_attr):
 
@@ -104,38 +122,77 @@ class Bins(object):
                               "[%s]." % (type_name, key))
             raise
 
-    def get_grouped_data(self, token):
+    def get_grouped_data(self, *args, **kwargs):
+        if self.__sort_type == SORT_BYKEY:
+            return self.__get_grouped_data_bykey(*args, **kwargs)
+        elif self.__sort_type == SORT_BYTYPE:
+            return self.__get_grouped_data_bytype(*args, **kwargs)
+        else:
+            raise Exception("Sort-type [%s] is not valid for get-data." % 
+                            (self.__sort_type))
+
+    def __get_grouped_data_bykey(self, sorted_key, type_name='*'):
         """If sort-by was BYKEY, return all of the data for all of the types
-        stored for the given key. If sort-by was BYTYPE, return all of the data
-        for all of the keys stored for the given type.
+        stored for the given key.
         """
 
-        search_path = ("%s/%s" % (self.__root_path, token))
+        search_path = ("%s/%s" % (self.__root_path, sorted_key))
 
         if not exists(search_path):
             raise LookupError("Search-path [%s] is not valid for token [%s] "
-                              "with sort-type [%s]." % (search_path, token,
-                                                        self.__sort_type))
+                              "(BY-KEY)." % (search_path, sorted_key))
 
-        found = glob("%s/*" % (search_path))
+        if self.__sort_type != SORT_BYKEY:
+            raise Exception("Sort-type must be BY-KEY for "
+                            "get_grouped_data_bykey.  ACTUAL= [%s]" % 
+                            (self.__sort_type))
 
-        if self.__sort_type == SORT_BYTYPE:
-            pb_cls = self.__handlers[token][0]
-        elif self.__sort_type != SORT_BYKEY:
-            raise Exception("Sort-type [%s] is not handled for "
-                            "get_grouped_data." % (self.__sort_type))
+        found = glob("%s/%s" % (search_path, type_name))
 
         collected = {}
         for file_path in found:
-            if self.__sort_type == SORT_BYKEY:
-                type_name = basename(file_path)
-                pb_cls = self.__handlers[type_name][0]
+            type_name = basename(file_path)
+            pb_cls = self.__handlers[type_name][0]
 
             items = []
             for item in Bins.bin_foreach(pb_cls, file_path):
                 items.append(item)
 
             collected[type_name] = items
+
+        return collected
+
+    def __get_grouped_data_bytype(self, sorted_type_name, key='*'):
+        """If sort-by was BYTYPE, return all of the data for all of the keys 
+        stored for the given type.
+        """
+
+        search_path = ("%s/%s" % (self.__root_path, sorted_type_name))
+
+        if not exists(search_path):
+            raise LookupError("Search-path [%s] is not valid for type-name "
+                              "[%s] (BY-TYPE)." % (search_path, 
+                                                   sorted_type_name))
+
+        if self.__sort_type != SORT_BYTYPE:
+            raise Exception("Sort-type must be BY-TYPE for "
+                            "get_grouped_data_bykey.  ACTUAL= [%s]" % 
+                            (self.__sort_type))
+
+        search_pattern = ("%s/%s" % (search_path, key))
+        
+        found = glob(search_pattern)
+
+        type_name = sorted_type_name
+        pb_cls = self.__handlers[type_name][0]
+
+        collected = {}
+        for file_path in found:
+            items = []
+            for item in Bins.bin_foreach(pb_cls, file_path):
+                items.append(item)
+
+            collected[basename(file_path)] = items
 
         return collected
 
@@ -171,6 +228,13 @@ class Bins(object):
 
         self.__router.flush()
 
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def root_path(self):
+        return self.__root_path
 
 class _Router(object):
     """Class responsible for knowing how to send data to bins."""
