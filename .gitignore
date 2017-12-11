@@ -1,3 +1,5 @@
 *.pyc
 *.log
-dist
+dist 
+build
+pybufferbins.egg-info

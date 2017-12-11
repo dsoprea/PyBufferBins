@@ -6,7 +6,7 @@ from pybufferbins.bins import Bins
 
 if len(argv) < 4:
     print("Please provide <module> <class name> <file to read>")
-    print
+    print()
     exit()
 
 (_, module_name, class_name, file_path) = argv
